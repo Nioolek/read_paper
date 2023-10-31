@@ -15,7 +15,7 @@
 
 
 ## Diffusion
-* [ControlNet]()
+* [ControlNet](./diffusion/ControlNet.md)
 
 
 ## 蒸馏
