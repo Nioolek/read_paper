@@ -60,8 +60,24 @@ Self-Attention时间复杂度？【美团】Self-Attention时间复杂度： O(n
 
 #### KV Cache 和 MQA
 
-当前自回归模型，通常是Decoder Only结构。推理过程是一个token一个token生成的过程，每生成一个token，都会进行一次self-attention计算。这样的计算效率是很低的，因为每次计算都是重复的计算。为了提高计算效率，提出了KV Cache和MQA。
-Refe:https://zhuanlan.zhihu.com/p/686149289
+当前自回归模型，通常是Decoder Only结构。推理过程是一个token一个token生成的过程，每生成一个token，都会进行一次self-attention计算。
+这样的计算效率是很低的，因为每次计算都是重复的计算。为了提高计算效率，提出了KV Cache和MQA。
+
+KV Cache将前向推理中的K和V进行缓存。在后续的自回归推理时，就不再需要重新推理K和V，以达到节省算力的目的。
+
+但是，由于multi head attention中，会有多个head，不同head有不同的KV，会产生很多的中间变量，需要很多的显存。为了节省显存，在K和V计算时，就只计算单个head。
+虽然相比原本的multi head方法降低了参数，但同时也会导致精度降低，却能大量减少中间结果显存需求。，这个做法叫做MQA。
+
+
+#### GQA
+
+既然只使用KV只使用1个head效果不好，那么就可以进行折中，那就多弄几套KV，数量仍然还是比Q的头数少一点。按照group的形式进行分配。
+权重初始化的时候，使用average pooling得到参数，然后进行少量训练得到。
+llama2用的就是GQA，其技术报告中展示了详细对比结果。
+
+![img](https://pic2.zhimg.com/80/v2-aa6302478f6dab8cf4b4cc400a406f79_1440w.webp)
+
+Reference:https://zhuanlan.zhihu.com/p/686149289
 
 ### Normalization
 
@@ -72,7 +88,20 @@ Refe:https://zhuanlan.zhihu.com/p/686149289
 * 有实验证明，将LayerNorm换为BatchNorm后，会使得训练中Batch的统计量以及统计量贡献的梯度不稳定（Batch的统计量就是Batch中样本的均值和方差，Batch的统计量不稳定也就是当前Batch的均值和运行到当前状态累加得到的均值间的差值有的大，有的小。方差也是类似的情况）
 * LayerNorm对self-attention处理累加得到的向量进行归一化，降低其方差，加速收敛
 
-#### RMSNorm
+#### Norm方式
+
+有post-norm和pre-norm两种方式。post-norm的方式是在add之后进行LN，pre-norm实在全连接层之前进行LN。
+![img](https://pic2.zhimg.com/80/v2-6304fc2872b860b363f462382fc887b5_1440w.webp)
+
+使用PreNorm的网络一般比较容易训练。但是对于深层网络学习的效果不太好。因为PreNorm比较偏重来自底层的恒等分支。恒等分支更容易训练。
+![img](https://pic4.zhimg.com/80/v2-3b38d786fb72296c95c243f39aea3fd3_1440w.webp)
+
+
+Reference:
+
+https://spaces.ac.cn/archives/8620
+
+https://zhuanlan.zhihu.com/p/657659526
 
 TODO
 
