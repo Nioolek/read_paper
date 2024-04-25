@@ -96,6 +96,10 @@ Reference:https://zhuanlan.zhihu.com/p/686149289
 使用PreNorm的网络一般比较容易训练。但是对于深层网络学习的效果不太好。因为PreNorm比较偏重来自底层的恒等分支。恒等分支更容易训练。
 ![img](https://pic4.zhimg.com/80/v2-3b38d786fb72296c95c243f39aea3fd3_1440w.webp)
 
+#### RMSNorm
+
+RMSNorm是在Layer Norm之上的改进，它通过舍弃中心不变性来降低计算量。公式如下：
+![rmsnorm](https://pic2.zhimg.com/80/v2-901e415a3c14040af0362ca551c9416d_720w.webp)
 
 Reference:
 
@@ -103,7 +107,78 @@ https://spaces.ac.cn/archives/8620
 
 https://zhuanlan.zhihu.com/p/657659526
 
-TODO
+### 激活函数
+
+softmax、relu这些激活函数就不提。
+
+#### GELU 和 Swish 激活函数
+
+Swish和GELU激活函数都是为了解决ReLu的缺陷而提出的。ReLu在负数部分的输出为0，导致了梯度消失的问题。
+
+Swish激活函数公式：
+```
+$$ \text{Swish}(x) = x \cdot \sigma(\beta x) $$
+```
+
+GELU激活函数是由Hinton等人提出，近似模拟神经元的激活方式。GELU的公式为：
+
+```
+$$ \text{GELU}(x) = x \cdot \Phi(x) $$
+```
+
+其中，$ x $是输入，$ \Phi(x) $ 是标准正态分布的累积分布函数（CDF），用于计算每个单位以某个概率激活。GELU通过随机性使模型更具鲁棒性，因此能够提高模型的泛化能力。在计算上，GELU通常使用以下近似形式来简化计算：
+
+```
+$$ \text{GELU}(x) \approx 0.5 \cdot x \cdot \left(1 + \tanh\left[\sqrt{2/\pi} \cdot (x + 0.044715 \cdot x^3)\right]\right) $$
+```
+
+Swish和GELU的区别
+数学形式：Swish函数用Sigmoid函数乘以输入，而GELU用输入乘以正态分布的CDF。
+复杂度：GELU函数的复杂度略高于Swish，因为正态分布的CDF计算或其近似公式比Sigmoid函数更复杂。
+性能：在不同的任务和网络架构中，这两种激活函数的性能可能有所不同。一些实验表明GELU在某些NLP任务中表现得更好，特别是在Transformer模型中得到广泛应用，而Swish则可能在其他类型的网络中有优势，性能差异很大程度上依赖于具体的数据集和任务。
+鲁棒性和泛化：理论上，由于GELU考虑了激活的随机性，可能提供更好的鲁棒性和泛化能力。
+
+SiLU其实就是beta为1时的Swish激活函数。
+
+
+
+### 网络
+
+#### 为什么现在的LLM都是Decoder only的架构？
+
+* 工程：模型大了，对工程能力挑战比较大。
+* 推理上，decoder-only可以更好的使用kv cache。
+* zero-shot表现，有论文表示decoder only的表现更好。
+* 有很多基础理论研究。例如很多研究者已经摸索出了基于decoder only的scaling law和训练方法，后来者鉴于时间和计算成本，不愿意做出大的改动。
+* 从科学理论上分析：
+
+@苏剑林 苏神强调的注意力满秩的问题，双向attention的注意力矩阵容易退化为低秩状态，而causal attention的注意力矩阵是下三角矩阵，必然是满秩的，建模能力更强；
+
+@yili 大佬强调的预训练任务难度问题，纯粹的decoder-only架构+next token predicition预训练，每个位置所能接触的信息比其他架构少，要预测下一个token难度更高，当模型足够大，数据足够多的时候，decoder-only模型学习通用表征的上限更高；
+
+@mimimumu 大佬强调，上下文学习为decoder-only架构带来的更好的few-shot性能：prompt和demonstration的信息可以视为对模型参数的隐式微调[2]，decoder-only的架构相比encoder-decoder在in-context learning上会更有优势，因为prompt可以更加直接地作用于decoder每一层的参数，微调的信号更强；
+
+多位大佬强调了一个很容易被忽视的属性，causal attention （就是decoder-only的单向attention）具有隐式的位置编码功能 [3]，打破了transformer的位置不变性，而带有双向attention的模型，如果不带位置编码，双向attention的部分token可以对换也不改变表示，对语序的区分能力天生较弱。
+
+Reference:https://www.zhihu.com/question/588325646/answer/3357252612
+
+
+### 微调方法
+
+#### 微调
+高效微调粗略分为三类：加额外参数 A + 选取一部分参数更新 S + 引入重参数化 R
+![finetune](https://pic2.zhimg.com/80/v2-ed42c72dfe5b849dfeb5df142f270675_720w.webp)
+
+Reference: https://zhuanlan.zhihu.com/p/627537421
+
+论文：Scaling Down to Scale Up: A Guide to Parameter-Efficient Fine-Tuning
+
+
+
+### 评价指标
+
+Accuracy
+
 
 
 
